@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "personal-assistant-harness",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-09",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": { "directory": "./dist", "binding": "ASSETS", "not_found_handling": "single-page-application", "run_worker_first": ["/api/*"] },
+  "durable_objects": { "bindings": [{ "name": "ASSISTANTS", "class_name": "Assistant" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Assistant"] }],
+  "workflows": [{ "name": "assistant-jobs", "binding": "ASSISTANT_WORKFLOW", "class_name": "AssistantWorkflow" }],
+  "vars": { "OPENAI_MODEL": "gpt-4.1-mini" },
+  "observability": { "enabled": true }
+}
