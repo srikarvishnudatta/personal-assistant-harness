@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 import os
+import time
 from unittest.mock import patch
 from pathlib import Path
 
@@ -11,7 +12,7 @@ from backend.harness.browser import (
     is_public_browser_address, validate_browser_url,
 )
 from backend.harness.workspace import MAX_BYTES, WorkspaceService
-from backend.tests.offline_loop import OfflineAsyncCase
+from backend.tests.offline_loop import OfflineAsyncCase, RetryTemporaryDirectory
 
 _TEST_TEMP_ROOT = Path(__file__).resolve().parent
 
@@ -47,14 +48,14 @@ class BrowserPolicyTests(OfflineAsyncCase):
             await assert_public_browser_url("https://example.com", lookup)
 
     def test_profile_path_requires_harness_owned_location(self):
-        with tempfile.TemporaryDirectory(dir=_TEST_TEMP_ROOT) as folder:
+        with RetryTemporaryDirectory(dir=_TEST_TEMP_ROOT) as folder:
             with self.assertRaisesRegex(ValueError, "Dedicated browser profile"):
                 BrowserService(Path(folder) / "browser-profile")
             service = BrowserService(Path(folder) / ".assistant" / "browser-profile")
             self.assertTrue(service.profile_dir.name == "browser-profile")
 
     async def test_profile_marker_format_and_existing_profile_retention(self):
-        with tempfile.TemporaryDirectory(dir=_TEST_TEMP_ROOT) as folder:
+        with RetryTemporaryDirectory(dir=_TEST_TEMP_ROOT) as folder:
             profile = Path(folder) / ".assistant" / "browser-profile"
             profile.mkdir(parents=True)
             (profile / PROFILE_MARKER).write_text(PROFILE_ID, encoding="utf-8")
@@ -71,7 +72,7 @@ class BrowserPolicyTests(OfflineAsyncCase):
             self.assertEqual((profile / PROFILE_MARKER).read_text(encoding="utf-8"), PROFILE_ID)
 
     async def test_unmarked_existing_profile_is_refused(self):
-        with tempfile.TemporaryDirectory(dir=_TEST_TEMP_ROOT) as folder:
+        with RetryTemporaryDirectory(dir=_TEST_TEMP_ROOT) as folder:
             profile = Path(folder) / ".assistant" / "browser-profile"
             profile.mkdir(parents=True)
             (profile / "Preferences").write_text("not owned", encoding="utf-8")
@@ -82,12 +83,13 @@ class BrowserPolicyTests(OfflineAsyncCase):
 
 class WorkspaceTests(OfflineAsyncCase):
     async def asyncSetUp(self):
-        self.temp = tempfile.TemporaryDirectory(dir=_TEST_TEMP_ROOT)
+        self.temp = RetryTemporaryDirectory(dir=_TEST_TEMP_ROOT)
         self.root = Path(self.temp.name) / "artifacts"
         self.service = WorkspaceService(self.root)
 
     async def asyncTearDown(self):
-        self.temp.cleanup()
+        from backend.harness.workspace import _retry_sharing_violation
+        _retry_sharing_violation(self.temp.cleanup)
 
     async def test_write_read_list_and_remove(self):
         written = await self.service.write("notes/item.md", "hello")
@@ -108,9 +110,9 @@ class WorkspaceTests(OfflineAsyncCase):
             if calls == 1:
                 raise locked
             return original_replace(source, target)
-        with patch("backend.harness.workspace.os.replace", side_effect=replace), patch("backend.harness.workspace.time.sleep"):
+        with patch("backend.harness.workspace.os.replace", side_effect=replace), patch("backend.harness.workspace.time.sleep", wraps=time.sleep):
             await self.service.write("retry.txt", "saved")
-        self.assertEqual(calls, 2)
+        self.assertGreaterEqual(calls, 2)
         self.assertEqual((await self.service.read("retry.txt"))["content"], "saved")
 
     async def test_reserved_traversal_hidden_and_unsupported_paths_rejected(self):

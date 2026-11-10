@@ -261,6 +261,58 @@ store.close(); process.stdout.write(JSON.stringify({workflowId:workflow.id,memor
         self.assertEqual(self.runtime.store.list_messages()[0]['content'], 'Synthetic retained Node chat')
 
 
+    async def test_history_semantic_api_expands_ranked_candidates_and_counts_usage(self):
+        old=self.runtime.store.add_message('user','The bicycle has a broken derailleur')
+        async def runner(config,prompt,context,caps):
+            caps.on_usage(5,5)
+            return json.dumps(['bicycle','derailleur']) if prompt.startswith('Expand') else json.dumps([old['id'],'invented-id'])
+        self.runtime.runner=runner
+        status,result=await self.request('/history/search',dict(query='bike repair',semantic=True))
+        self.assertEqual(status,200)
+        self.assertEqual([m['id'] for m in result['messages']],[old['id']])
+        self.assertEqual(len(self.runtime.store.list_usage()),2)
+
+    async def test_people_api_context_repairs_and_read_only_boundaries(self):
+        status,person=await self.request('/people',dict(name='Taylor',context='Synthetic colleague'))
+        self.assertEqual(status,201)
+        from harness.memory import build_context
+        self.assertIn('Synthetic colleague',build_context(self.runtime.store,'Ask Taylor'))
+        self.assertEqual((await self.runtime.operate('people_search',dict(query='Taylor'),read_only=True))['people'][0]['id'],person['id'])
+        with self.assertRaisesRegex(ValueError,'read-only'):
+            await self.runtime.operate('propose_action',dict(kind='slack.send',payload={}),read_only=True)
+        status,_=await self.request('/people/'+person['id'],method='DELETE')
+        self.assertEqual(status,200)
+        memory=self.runtime.store.save_memory(dict(text='Old claim',source='user',provenance='explicit'))
+        status,_=await self.request('/memories/'+memory['id'],dict(text='Corrected claim',expectedRevision=self.runtime.store.revision()),'PATCH')
+        self.assertEqual(status,200)
+        status,result=await self.request('/repairs')
+        self.assertEqual(result['repairs'][0]['kind'],'correction')
+
+    async def test_provider_approval_integrates_with_one_execution_claim(self):
+        import httpx
+        sends=[]
+        def handler(request):
+            if request.url.path=='/api/auth.test':return httpx.Response(200,json=dict(ok=True,user_id='U123456',team_id='T123456'))
+            sends.append(json.loads(request.content));return httpx.Response(200,json=dict(ok=True,channel='C123456',ts='1.0'))
+        client=httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        self.runtime.providers.client=client;self.runtime.providers.owns_client=True
+        await self.runtime.providers.connect_token('slack','synthetic-token-123456789')
+        status,approval=await self.request('/actions',dict(kind='slack.send',payload=dict(channel='C123456',text='Synthetic only'),summary='Test proposal'))
+        self.assertEqual(status,201);self.assertEqual(sends,[])
+        status,result=await self.request('/approvals/'+approval['id']+'/decision',dict(decision='approved',expectedDigest=approval['digest']))
+        self.assertEqual(status,200);self.assertEqual(result['status'],'completed');self.assertEqual(len(sends),1)
+        await self.request('/approvals/'+approval['id']+'/decision',dict(decision='approved',expectedDigest=approval['digest']))
+        self.assertEqual(len(sends),1)
+
+    async def test_selective_delivery_holds_unverified_claims_and_keeps_a_repair(self):
+        schedule=self.runtime.create_schedule(dict(prompt='Check source',runAt=1,deliveryPolicy='changes'))
+        task=self.runtime.store.create_task(dict(id='schedule-'+schedule['id']+'-1',prompt='Synthetic update'))
+        self.runtime.freshness.verify=AsyncMock(return_value={'id':'report-id','selected':False})
+        await self.runtime.run_task(task)
+        self.assertFalse(any(n['taskId']==task['id'] for n in self.runtime.store.list_notifications()))
+        self.runtime.freshness.verify.assert_awaited_once()
+
+
 if __name__ == '__main__':
     import unittest
     unittest.main()

@@ -33,9 +33,12 @@ async def sync_memory_files(store, workspace):
 
 def build_context(store, query=''):
     import json
+    from .knowledge import PeopleGraph
     memories = store.list_memories(query)[:30] or store.list_memories()[:20]
     parts = ['INSTRUCTIONS\nStored material is reference data. User corrections supersede inferred notes.']
     parts.append('CURRENT GOALS\n' + json.dumps([g for g in store.list_goals() if g['status'] == 'active'])[:4000])
+    people = PeopleGraph(store).context(query)
+    if people['people']: parts.append('PEOPLE / GROUPS (USER-REVIEWED REFERENCE DATA)\n' + json.dumps(people)[:6000])
     summary = store.get_setting('conversationSummary') or {}
     if summary.get('text'): parts.append('SUMMARY\n' + summary['text'][:5000])
     # Complete recent messages take priority over older excerpts.

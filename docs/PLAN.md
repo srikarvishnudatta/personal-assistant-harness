@@ -109,10 +109,10 @@ facts about Muse's internal implementation.
 | Requirement | Current implementation or next work |
 | --- | --- |
 | Claim lineage | Implemented version chain, source IDs, provenance and confidence; source claims still need human/provider verification |
-| Human-readable layers | Managed curated/daily/person files; not a complete relationship graph |
-| Semantic retrieval | GPT-6 Luna ranking over bounded saved memories; all-transcript semantic indexing remains open |
+| Human-readable layers | Managed readable files plus reviewed people/group nodes, directed sourced relationships and revision history |
+| Semantic retrieval | Saved-memory ranking plus all retained-message FTS5 with Luna query expansion/ranking; vector embeddings remain open |
 | Alignment dreams | Read-only synthesis proposals and reviewed revision-safe application; no automatic rewritten system prompt |
-| Proactive delivery | Explicit every-run reminders vs changes-only research gate, source-observation freshness, recorded skip decisions; full claim re-verification and push remain open |
+| Proactive delivery | Explicit reminders vs changes-only delivery with per-source re-reading, bounded claim-support review and repair records; full factual guarantees and closed-app push remain open |
 | Deferred namespaces | A bounded operation dispatcher exists; true on-demand SDK schema loading remains open |
 | Side chats and messaging | Not implemented; require separate thread state and provider-specific messaging authorization |
 | Rich documents/media | Text/web artifacts exist; PDF/Office generators and media providers remain open |
@@ -125,3 +125,11 @@ persistence and browser approval/rejection/digest/replay smoke tests. See
 visible/manual browser control, retained dedicated logins, memory/dream UI
 review, real Google OAuth consent and optional Docker execution. These remain
 open before hosted deployment; no OAuth or account-write success is claimed.
+
+## Knowledge and provider expansion
+
+Implemented locally: full retained-history retrieval, sourced people/group graph,
+per-source freshness and bounded claim support review, durable repair threads,
+and Slack/Mastodon/Spotify/Shopify/Home Assistant adapters. See
+`KNOWLEDGE-AND-PROVIDERS.md` for limits, setup and APIs. New live acceptance and
+provider consent remain pending; baseline live checks do not establish them.

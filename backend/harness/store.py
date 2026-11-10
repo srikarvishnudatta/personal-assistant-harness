@@ -4,6 +4,7 @@ from decimal import Decimal
 from pathlib import Path
 from datetime import datetime, timezone
 from .workflows import validate_workflow, workflow_task_id
+from .knowledge import initialize_knowledge, forget_knowledge, invalidate_knowledge
 
 def _now(): return int(time.time()*1000)
 def _id(): return str(uuid.uuid4())
@@ -88,6 +89,7 @@ class LocalStore:
         CREATE TABLE IF NOT EXISTS events(id TEXT PRIMARY KEY,type TEXT NOT NULL,task_id TEXT,detail TEXT NOT NULL,created_at INTEGER NOT NULL);
         CREATE TABLE IF NOT EXISTS usage(run_id TEXT PRIMARY KEY,day TEXT NOT NULL,reserved_tokens INTEGER NOT NULL,input_tokens INTEGER NOT NULL,output_tokens INTEGER NOT NULL,status TEXT NOT NULL,created_at INTEGER NOT NULL,updated_at INTEGER NOT NULL);
         CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status,created_at); CREATE INDEX IF NOT EXISTS idx_schedules_due ON schedules(status,next_run_at); CREATE INDEX IF NOT EXISTS idx_usage_day ON usage(day);''')
+        initialize_knowledge(self.db)
     def close(self):
         if self._closed: return
         if self.runtime_lease: self.db.execute('DELETE FROM runtime_owner WHERE singleton=1 AND pid=? AND nonce=?',(os.getpid(),self.runtime_lease))
@@ -171,6 +173,7 @@ class LocalStore:
             if not isinstance(source_ids,list) or not source_ids or any(not isinstance(x,str) or not x.strip() for x in source_ids): raise ValueError('Invalid memory source IDs')
             if m['provenance']=='explicit' and n['provenance']=='inferred': raise ValueError('Inference cannot replace explicit memory')
             now=_now()
+            invalidate_knowledge(self.db,id)
             self.db.execute('UPDATE memories SET text=?,kind=?,source=?,source_ids=?,provenance=?,confidence=?,updated_at=? WHERE id=?',(n['text'].strip(),n['kind'],n['source'],json.dumps(source_ids),n['provenance'],n['confidence'],now,id)); self.db.execute("UPDATE settings SET value=CAST(CAST(value AS INTEGER)+1 AS TEXT) WHERE key='memory_revision'"); m=self._memory(self.db.execute('SELECT * FROM memories WHERE id=?',(id,)).fetchone()); self._record_version(m); return m
         return self._tx(work)
     def forget_memory(self,id,include_source_messages=False):
@@ -178,6 +181,7 @@ class LocalStore:
             r=self.db.execute('SELECT * FROM memories WHERE id=?',(id,)).fetchone()
             if not r: raise ValueError('Memory not found')
             m=self._memory(r); lineage=self.memory_lineage(id); phrases={m['text'],*(v['snapshot']['text'] for v in lineage)}
+            forget_knowledge(self.db, m, phrases, m['sourceIds'] if include_source_messages else ())
             for p in phrases:
                 if self._rows("SELECT id FROM approvals WHERE status='executing' AND (instr(payload,?)>0 OR instr(result,?)>0)",p,p): raise ValueError('Cannot forget a claim while a related action is executing; wait for the outcome')
             self.db.execute('DELETE FROM memories WHERE id=?',(id,)); self.db.execute('DELETE FROM memory_versions WHERE memory_id=?',(id,)); self.db.execute("DELETE FROM settings WHERE key IN ('conversationSummary','alignmentSynthesis') OR key LIKE 'dream:%'")

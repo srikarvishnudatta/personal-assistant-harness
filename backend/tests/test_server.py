@@ -53,7 +53,8 @@ class ServerTests(OfflineAsyncCase):
         await self.client.aclose()
         if self.lifespan is not None:
             await self.lifespan.__aexit__(None, None, None)
-        self.tmp.cleanup()
+        from harness.workspace import _retry_sharing_violation
+        _retry_sharing_violation(self.tmp.cleanup)
 
     async def test_auth_public_paths_and_lifecycle(self):
         self.assertEqual((await self.client.get("/health")).status_code, 200)

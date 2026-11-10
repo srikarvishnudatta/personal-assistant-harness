@@ -38,6 +38,9 @@ flowchart TD
 | Confined artifacts and optional Docker execution | `backend/harness/workspace.py` |
 | Human-readable memory projections | `backend/harness/memory.py` |
 | Timezone cron and missed-tick coalescing | `backend/harness/scheduling.py` |
+| Full-history search, people graph and repair records | `backend/harness/knowledge.py` |
+| Per-source freshness and bounded claim support review | `backend/harness/freshness.py` |
+| Additional provider grants and bounded operations | `backend/harness/providers.py` |
 | Duplicate/source-observation delivery gate | `backend/harness/proactivity.py` |
 
 ## Data boundaries
@@ -45,8 +48,10 @@ flowchart TD
 `.assistant/assistant.sqlite` owns conversation history, memories, revision
 lineage, goals, task state, schedules, approvals, inbox, usage and audit events.
 The raw transcript, summary, curated memory and current prompt are distinct.
-Memory search currently covers saved claims using keywords or bounded GPT-6 Luna
-ranking, not a complete vector index of all transcripts.
+Saved-memory search supports keywords or bounded GPT-6 Luna ranking. A separate
+FTS5 index covers every retained message; semantic history search expands queries
+and ranks candidates with Luna. It is not a vector embedding index. Sourced
+people/group revisions, relationships, repairs and freshness reports share SQLite.
 
 `.assistant/browser-profile` belongs only to the assistant. It never opens the
 user's everyday browser data. Cookies persist; tab identities can change when
@@ -82,7 +87,9 @@ loading is not implemented.
 ## Proactivity and outputs
 
 Explicit reminders can deliver each occurrence. Changes-only research schedules
-compare fingerprints and require recently observed source links. Results and
+compare fingerprints, re-read bounded source excerpts and require a per-source
+freshness and model-based claim-support review. Unsupported/incomplete reviews
+are held with a repair thread. Results and
 delivery decisions remain inspectable separately. This checks observations and
 freshness; it does not prove every claim. Desktop notifications currently work
 only while Inbox is open, not as closed-app push.

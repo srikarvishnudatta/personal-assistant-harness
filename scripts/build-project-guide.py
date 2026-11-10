@@ -17,10 +17,14 @@ modules = {
     'connectors': ('Google services', 'OAuth PKCE, encrypted refresh tokens, Gmail and Calendar; real consent still required.'),
     'workspace': ('Files and execution', 'Confined artifacts and reviewed procedures; explicitly enabled Docker scripts.'),
     'config': ('Configuration', 'Local settings and model policy; secrets are excluded from status output.'),
+    'knowledge': ('Knowledge services', 'All-history FTS indexing with Luna ranking, sourced people graph and durable repairs.'),
+    'freshness': ('Claim support review', 'Per-source re-reading, fingerprints, bounded claim review and held-update repairs.'),
+    'providers': ('Provider registry', 'Encrypted authorization, fixed provider operations and account-bound reviewed writes.'),
 }
 docs = {name: (ROOT / file).read_text(encoding='utf-8') for name, file in {
     'Read me': 'README.md', 'Architecture': 'docs/ARCHITECTURE.md',
     'Roadmap': 'docs/PLAN.md', 'Verification': 'docs/VERIFICATION.md',
+    'Knowledge & providers': 'docs/KNOWLEDGE-AND-PROVIDERS.md',
 }.items()}
 runtime = (ROOT / 'backend/harness/runtime.py').read_text(encoding='utf-8')
 routes = sorted(set(re.findall(r"route == '([^']+)'", runtime)))

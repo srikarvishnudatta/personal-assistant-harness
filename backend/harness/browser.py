@@ -282,6 +282,10 @@ class BrowserService:
             return {"tabId": tab_id, "url": page.url, "title": await page.title(), "text": content[:24000],
                     "truncated": len(content) > 24000, "elements": elements, "untrustedContent": True}
 
+    async def close_tab(self, tab_id: str) -> None:
+        async with self._lock:
+            await self._page(tab_id).close()
+
     async def screenshot(self, tab_id: str) -> dict[str, str]:
         async with self._lock:
             page = self._page(tab_id)

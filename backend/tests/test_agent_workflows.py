@@ -78,7 +78,7 @@ class AgentAdapterTests(unittest.TestCase):
         self.assertEqual(schemas["assistant_operation"]["properties"]["operation"]["enum"], [
             "browser_read", "memory_search", "goals", "files", "skills", "gmail_read",
             "calendar_read", "propose_action", "delegate", "workflow", "notify",
-            "schedule_cron", "complete_goal_step",
+            "schedule_cron", "complete_goal_step", "history_search", "people_search", "provider_read",
         ])
 
     def test_read_only_removes_write_tools(self):

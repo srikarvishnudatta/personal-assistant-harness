@@ -1,5 +1,48 @@
 # Verification ledger
 
+## Knowledge and provider expansion — November 10, 2026
+
+The user passed `npm run test:knowledge` against the running Python service in
+their normal PowerShell terminal. Verified: people/group relationships, source
+provenance, graph revisions, full-history indexing, live GPT-6 Luna query
+expansion/ranking, repair review with evidence, an unsourced-update hold, and
+the credential-free provider catalogue. Temporary graph/memory fixtures were
+removed; synthetic chat and source-review audit records may remain. This does
+not verify a real provider grant/read/write, supported-source claim review, or
+visual UI behavior.
+
+The suite now contains 86 tests. The earlier 85-test run passed 84 with one
+Windows symlink skip. After adding source-correction invalidation, full-suite
+reruns encountered intermittent restricted-host SQLite read-only and Windows
+sharing-lock failures in existing persistence/file fixtures; the failing cases
+passed when rerun in isolation. Do not treat this as a clean full 86-test run.
+All 25 new feature checks passed when run separately. They cover indexing beyond
+the recent-history window, transactional edit/delete
+synchronization, legacy backfill, semantic expansion/ranking and usage, sourced
+graph revisions/relationships, forgetting derived graph copies, repair transition
+and evidence rules, per-source freshness, held updates, invalid claim reviews,
+OAuth PKCE/refresh, encrypted provider grants, bounded reads, account binding,
+and exactly one approved send using a mocked transport. Source corrections
+invalidate old summaries and suppress sourced graph context until owner review. No provider account
+write was made. Windows fixture cleanup retries transient sharing locks only.
+
+TypeScript/Python checks and the frontend build passed. The existing dist
+folder could not be emptied in this restricted session; building with
+`npm run build -- --emptyOutDir false` succeeded and updated the served assets. New History, People, Repairs, Evidence and provider Connections UI
+are implemented; visual and live acceptance for these screens remains pending.
+The synthetic `npm run test:knowledge` live gate passed as recorded above.
+It used three short model calls and no provider writes.
+
+Live source-page support review and each real provider authorization/read remain
+unverified. Slack/Mastodon writes additionally require exact owner approval;
+Shopify is product-read only and Home Assistant exposes exact entity-state reads
+only. Existing baseline live results below do not establish these new features.
+
+History meaning search uses FTS5 across retained messages with GPT-6 Luna query
+expansion/ranking; it does not use vector embeddings or promise exhaustive
+semantic recall. Source review is model support assessment over bounded excerpts,
+not independent fact verification. See KNOWLEDGE-AND-PROVIDERS.md.
+
 ## Python migration — current runtime
 
 The user also passed `test:local -- --verify-restart` against the restarted

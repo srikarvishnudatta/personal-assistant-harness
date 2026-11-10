@@ -15,7 +15,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 from .config import Config, load_config
 
 MAX_REQUEST_BYTES = 64 * 1024
-PUBLIC_PATHS = frozenset(("/health", "/oauth/google/callback"))
+PUBLIC_PATHS = frozenset(("/health", "/oauth/google/callback", "/oauth/spotify/callback"))
 
 
 class RequestGuards:

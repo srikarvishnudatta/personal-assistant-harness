@@ -14,6 +14,7 @@ const commands = {
   model: ['-m', 'harness.smoke_model'],
   browser: ['-m', 'harness.smoke_browser'],
   network: ['-m', 'harness.network_doctor'],
+  knowledge: ['-m', 'harness.smoke_knowledge'],
 };
 const operation = process.argv[2];
 if (!(operation in commands)) throw new Error('Unknown Python command');

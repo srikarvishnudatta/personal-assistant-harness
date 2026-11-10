@@ -5,6 +5,11 @@ the architecture explorer, capability filters, workflow simulator, setup command
 and full embedded documentation. It works offline and makes no API calls.
 Regenerate it after documentation changes with `python scripts/build-project-guide.py`.
 
+The [knowledge and providers expansion](docs/KNOWLEDGE-AND-PROVIDERS.md) adds
+History, People, Repairs and Evidence screens plus configurable Slack, Mastodon,
+Spotify, Shopify product reads and Home Assistant state reads. Authorize each
+provider separately; sends/posts require the existing approval flow.
+
 A local-first personal assistant using **OpenAI Agents SDK for Python + GPT-6 Luna only**,
 an **Astryx React UI**, persistent SQLite and a dedicated Chromium profile.
 All active agent code is Python under `backend/harness`: the runner, tools,
@@ -97,14 +102,14 @@ Python service integration is deferred; they cannot deploy the retired backend.
 | --- | --- |
 | Agent loop | GPT-6 Luna, bounded turns/time, actual tool results, optional hosted web search, usage reservations |
 | State | Disk SQLite messages, goals/steps, tasks, schedules, approvals, inbox and audit |
-| Memory | Provenance, correction lineage, keyword and GPT-6 Luna ranked search over saved memories; summaries and versioned dream proposals |
+| Memory | Provenance, corrections, saved-memory ranking; full retained-history index with Luna query expansion/ranking; sourced people/group graph and repair threads |
 | Readable memory | Managed `memory/MEMORY.md`, recent daily notes and person notes in the workspace; SQLite remains authoritative |
 | Forget | Removes a saved claim, revision history and known exact derived copies; optionally removes known source messages; invalidates summaries |
 | Browser | Separate persistent profile, public navigation, tabs, snapshots, screenshots, visible manual login, reviewed click/fill |
 | Background | Durable queue, bounded subtasks, restart recovery, one-shot/interval/timezone cron, stable event-hook IDs |
 | Delivery | Durable inbox, repeat suppression/source-observation gate for selective research schedules; desktop notices while Inbox is open |
 | Actions | Exact immutable payload/digest/expiry, accept/reject, one execution claim, uncertain-outcome reconciliation |
-| Google | OAuth PKCE and encrypted refresh tokens; Gmail search/read/send and Calendar list/create behind approval for writes |
+| Connections | Google OAuth; encrypted grants for Slack, Mastodon, Spotify, Shopify product reads and Home Assistant state reads; reviewed writes only where supported |
 | Workspace | Confined text/Markdown/CSV/JSON/HTML artifacts and reviewed procedures; optional Docker-only scripts |
 
 There is no fallback to a different model. Model-based semantic ranking and
@@ -179,8 +184,9 @@ returned to the model or status APIs.
 
 Requested scopes cover Gmail read/send and Calendar events. Sending email and
 creating events still require a separate exact action approval inside the app.
-Spotify, Instagram, Threads, WhatsApp, health and device connectors are not
-implemented or activated by this Google connection.
+Google consent does not activate other services. Additional Slack, Mastodon,
+Spotify, Shopify and Home Assistant adapters need their own authorization in
+Connections. Instagram, Threads, WhatsApp and health integrations remain open.
 
 ## Files, procedures and execution
 
@@ -197,8 +203,10 @@ workspace mount and resource/time limits. Image pulls are not automatic. This
 does not provide arbitrary persistent Linux processes, and no VM is required.
 
 PDF/Office document generators, image/video/audio generation, commerce wallets,
-side-chat messaging, full relationship graphs, all-history semantic indexing,
+side-chat messaging, larger relationship graphs, vector embedding retrieval,
 fully deferred tool schemas and background push delivery remain later work.
+Full retained-history FTS with Luna semantic expansion/ranking and a sourced
+personal people graph are now implemented; see the expansion guide.
 Image/video/audio providers also need a model-policy decision because the
 current configuration permits GPT-6 Luna language-model calls exclusively.
 

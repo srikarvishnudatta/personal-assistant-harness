@@ -11,6 +11,14 @@ button { cursor: pointer; }
 button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, summary:focus-visible { outline: 3px solid light-dark(#8d9d70, #bfd4a8); outline-offset: 4px; }
 .app-shell { min-height: 100vh; display: grid; grid-template-columns: 244px minmax(0, 1fr); }
 .sidebar { background: light-dark(#f0f2eb, #191e19); border-right: 1px solid light-dark(#e1e5da, #343e31); padding: 36px 20px 20px; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+.sidebar { overflow-y: auto; }
+.knowledge-card > h2 { font-size: 19px; margin: 0 0 16px; }
+.knowledge-card > p { line-height: 1.75; font-size: 13px; margin: 0 0 16px; }
+.knowledge-card .table-wrap { overflow-x: auto; margin-top: 20px; }
+.knowledge-card table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.knowledge-card td, .knowledge-card th { padding: 12px; text-align: left; border-bottom: 1px solid light-dark(#e2e8d9, #343e31); overflow-wrap: anywhere; }
+.native-field textarea { width: 100%; resize: vertical; }
+@media (max-width:650px) { nav { overflow-x:auto; } .nav-item { flex-shrink:0; white-space:nowrap; } }
 .brand { display: flex; gap: 13px; align-items: center; color: light-dark(#2c3524, #e4e9df); text-decoration: none; padding: 0 12px; font-size: 24px; font-weight: 600; letter-spacing: -.8px; }
 .brand-symbol { font-size: 43px; font-weight: 400; color: light-dark(#66784e, #acc894); }
 .brand-sub { display: block; font-size: 9px; letter-spacing: 3.3px; margin-top: 2px; color: light-dark(#78806e, #b1bca8); }
@@ -168,3 +176,4 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; font-family: inherit; line
   .file-entry { flex-wrap: wrap; }
   .file-entry > small { margin-left: 0; }
 }
+@media (max-width:650px) { nav { overflow-x:auto; } .nav-item { flex:0 0 auto; white-space:nowrap; } }

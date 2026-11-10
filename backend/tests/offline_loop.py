@@ -8,6 +8,17 @@ import asyncio
 import selectors
 import time
 import unittest
+import tempfile
+
+
+class RetryTemporaryDirectory(tempfile.TemporaryDirectory):
+    """Windows scanners can briefly hold a just-closed fixture file."""
+    def cleanup(self):
+        for attempt in range(8):
+            try: return super().cleanup()
+            except PermissionError as error:
+                if getattr(error,'winerror',None) not in (32,33) or attempt==7: raise
+                time.sleep(.05*(attempt+1))
 
 
 class _NoIOSelector(selectors.BaseSelector):

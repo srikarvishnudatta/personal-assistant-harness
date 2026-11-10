@@ -17,6 +17,7 @@
     "test:local": "node --experimental-strip-types scripts/local-smoke.ts",
     "test:approvals": "node --experimental-strip-types scripts/approval-smoke.ts",
     "test:workflows": "node --experimental-strip-types scripts/workflow-smoke.ts",
+    "test:knowledge": "node scripts/python.mjs knowledge",
     "doctor:network": "node scripts/python.mjs network",
     "deploy": "node scripts/cloudflare-deferred.mjs"
   },
