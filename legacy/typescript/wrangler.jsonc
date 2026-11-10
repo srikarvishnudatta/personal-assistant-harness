@@ -8,6 +8,6 @@
   "durable_objects": { "bindings": [{ "name": "ASSISTANTS", "class_name": "Assistant" }] },
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Assistant"] }],
   "workflows": [{ "name": "assistant-jobs", "binding": "ASSISTANT_WORKFLOW", "class_name": "AssistantWorkflow" }],
-  "vars": { "OPENAI_MODEL": "gpt-4.1-mini" },
+  "vars": { "OPENAI_MODEL": "gpt-6-luna" },
   "observability": { "enabled": true }
 }

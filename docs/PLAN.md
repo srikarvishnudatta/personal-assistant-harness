@@ -1,68 +1,127 @@
-# Implementation plan
+# Personal assistant: ordered implementation plan
 
-## Goal
+Build a local-first assistant with GPT-6 Luna only, Astryx UI, persistent state,
+its own Chromium browser, controlled actions and background work. All active
+agent behavior runs in Python; the UI remains React/Astryx. Hosted Python and
+Cloudflare integration follows local acceptance testing. This is an
+independent product inspired by public behavior, not a reproduction of Meta's
+private backend or a promise of Muse feature parity.
 
-Build a personal assistant on Cloudflare Workers using the OpenAI Agents SDK. It should retain useful context, maintain explicit goals and tasks, perform scheduled work, and periodically consolidate memory. The assistant's state persists even when no process is running.
+The dedicated Linux VM is explicitly out of scope at the user's request. Do
+not provision one or make it a prerequisite for local operation.
 
-The first version is a developer-operated, single-user service. A Muse-like experience is the product direction, not a claim that its proprietary backend has been reproduced.
+| Order | Deliverable | Acceptance gate |
+| --- | --- | --- |
+| 1 | Local Python/FastAPI server, disk SQLite, authenticated API, durable task queue and recovery | Start without Cloudflare; history survives restart; interrupted writes are not blindly repeated |
+| 2 | Dedicated persistent Chromium profile, tabs, navigation, page snapshots, screenshots, manual login | Open a public page, inspect it in UI, retain dedicated logins across relaunch; never use everyday profile |
+| 3 | Immutable action payloads, exact approval cards, expiry, atomic execution claims, audit, usage limits | Unapproved/rejected/expired actions never execute; duplicate approval cannot repeat writes; interrupted actions become uncertain |
+| 4 | Typed searchable memory, corrections, version checks, goals/steps, summaries, dream proposals | Corrections win over inference; stale dreams conflict; goal progress and evidence remain inspectable |
+| 5 | One-shot, interval and timezone cron; events; bounded subtasks; notifications and resumption | UI can close while server stays running; stable occurrence IDs suppress duplicates; unread results remain in inbox |
+| 6 | Google OAuth PKCE, encrypted vault, Gmail search/read/send, Calendar list/create | User authorizes real scopes; reads work; sends/event writes require exact approval; disconnect removes credentials |
+| 7 | Confined files/artifacts, reviewed reusable procedures, Docker-only code execution | Reject traversal/symlinks; download real outputs; never execute scripts on host; bound resources/time |
+| 8 | Cloudflare browser/executor adapters, hosted deployment, real multiuser auth, push delivery | Repeat local acceptance checks on hosted bindings; isolate tenants and test retention/export |
 
-## Milestones
+Workflow orchestration is implemented locally: validated DAGs, parallel
+specialists, dependency joins, verifier and synthesis agents, persisted stage
+results, bounded retries reusing successful stages, cancellation, and a single
+final inbox answer. Chat can create teams; the Workflows UI exposes progress,
+results and controls. All stages are read-only GPT-6 Luna runs. Component tests
+and frontend build pass. The user also passed the live Python workflow gate:
+specialists, verifier and synthesizer consumed dependency results, each ran once,
+and one final inbox receipt was recorded. Python local/restart and approval
+acceptance checks passed as recorded in `docs/VERIFICATION.md`.
 
-| Phase | Deliverable | Completion criteria |
-|---|---|---|
-| 1. Runnable foundation | Worker API, ASTRYX React UI shell, per-user Durable Object, SQLite schema, SDK adapter, Workflow entry point | Type checking, domain tests, UI/Worker bundle validation; local chat and persisted history with a real key |
-| 2. Context and memory | Bounded context builder, provenance, memory revisions, correction/deletion API | Explicit and inferred information remain distinguishable; concurrent writes cannot silently overwrite newer memory |
-| 3. Scheduled execution | One-shot and interval schedules, alarm dispatch, durable task records | Client can close before a due task; task and result remain inspectable; retry/cancel behavior is tested |
-| 4. Dreams | Background synthesis of a bounded activity snapshot into proposed memory changes | Dreams cite input events, preserve corrections, use version checks, and cannot perform external actions |
-| 5. Personal integrations | Authenticated email/calendar/search/file tools and reusable skill recipes | Least-privilege credentials, tool authorization, request budgets, and safe failures |
-| 6. Approvals and delivery | Paused task state, exact action review, resume, notifications | Approval is bound to a specific action; stale approval cannot authorize changed parameters; results reach the user |
-| 7. Public product readiness | User login, OAuth lifecycle, tenant isolation, operational controls | Identity comes from verified credentials; deletion/export, retention, observability, and abuse controls are exercised |
+Independent modules may be prepared in parallel. Being implemented is not the
+same as being live-tested. Do not claim a stage complete without its gate.
 
-Phases can overlap, but deployment should not be described as production-ready before the relevant completion criteria have evidence.
+## Runtime design
 
-## Initial implementation scope
+```mermaid
+flowchart TD
+  UI["Astryx UI"] --> API["Authenticated local API"]
+  API --> DB["SQLite state and queue"]
+  DB --> RUN["Bounded GPT-6 Luna runner"]
+  RUN --> READ["Browser and connector reads"]
+  RUN --> PROPOSE["Action proposals"]
+  PROPOSE --> DB
+  API --> APPROVE["Exact approval"]
+  APPROVE --> EXEC["Controlled executor"]
+  EXEC --> DB
+```
 
-The initial repository contains configuration, API routing, per-user persistence, bounded agent calls, basic schedules and background task handling, domain checks, an ASTRYX React UI shell in `web/`, and setup documentation. Full timezone-aware cron, connector OAuth, and notification delivery remain follow-up work. The UI is built with Vite and served by Worker assets; build it before starting Wrangler. `npm run dev:ui` supplies a separate UI development server that proxies API calls to Wrangler on port 8787.
+State, cookies, encrypted OAuth credentials and workspace data live under
+`.assistant/` and never enter Git. A local process must remain running for
+background work. A sleeping/offline laptop is not an always-on cloud service.
 
-Use direct Durable Object alarms for the initial scheduler. Introduce a scheduler library only when its behavior and operational benefits justify the extra dependency. Store explicit UTC instants and interval durations initially; later store IANA timezones and recurrence rules for local-time schedules.
+## Rules that must be enforced in code
 
-## Explicit state and recovery
+- Distinguish model proposals, authorization, execution and user receipt.
+- Tasks persist queued/running/waiting_approval/completed/failed/cancelled state.
+- Bind an approval to immutable arguments, digest and expiry. Claim execution
+  once; a crash during an external write becomes uncertain, not an automatic retry.
+- Stable schedule occurrence IDs; coalesce missed interval ticks after downtime.
+- Separate history, summary, memories and current context. Preserve provenance,
+  user corrections and optimistic memory revisions.
+- Dreams publish evidence-backed proposals first. Approval applies against the
+  input revision; inferred preferences never become authorization.
+- Public browsing is available; browser click/fill actions require review.
+  No arbitrary JavaScript execution tool. Manual login happens in the separate
+  browser. Cookies and credentials are never exposed through API/model context.
+- Scripts run only in explicitly enabled Docker containers, with no network,
+  confined mounts, resource/time bounds and explicit approval. No host shell tool.
+- Reserve and record tokens; limit turns, concurrent runs and child tasks.
+  Do not advertise a dollar cap without verified model prices.
+- Artifact HTML downloads as attachments, not executable pages on the app origin.
 
-Tasks should follow a documented state machine: queued > running > completed/failed, with waiting-for-approval and cancelled paths added when those features exist. Store the task ID, triggering event, schedule occurrence, timestamps, attempt information, and terminal result.
+## External prerequisites and deferred capability
 
-Do not mistake an SDK session for durable execution. Workflow stages need persisted inputs and outputs. Retrying a whole agent run may repeat tool actions: externally visible writes require stable operation IDs, idempotency support where available, and reconciliation when a provider's outcome is uncertain.
+Gmail/Calendar need the user's own Google OAuth client and consent. Spotify,
+Threads, Instagram, health and device integrations each need supported APIs,
+eligible accounts and separate authorization. Interface code does not mean an
+account is connected. Image/video/audio generation needs provider-specific
+models; using GPT-6 Luna for language does not provide those modalities.
 
-Schedule dispatch must account for failure between recording an occurrence and creating its Workflow. Test crashes on both sides of that boundary. Catch-up policy, overlap policy, cancellation, and duplicate suppression need explicit semantics rather than accidental behavior.
+## Research sources
 
-## Memory and dreams
-
-- Keep source events and durable memories separate.
-- Attach evidence, timestamps, scope, and explicit/inferred status to memory. The initial runtime classifies model-extracted memories as inferred; manually entered memories and user-approved dream text are explicit.
-- Treat tentative intentions as tentative; do not promote them to recurring instructions.
-- Build a bounded prompt from recent messages, summary, relevant memories, and current task state.
-- Run dreams against a fixed input snapshot and publish updates with an optimistic revision check.
-- Preserve an audit trail and allow inspection, correction, deletion, and export.
-- Track deletion through derived summaries and retrieval indexes as these are introduced.
-
-Dreams should initially improve memory only. They can propose a follow-up, but proposals do not independently authorize sending messages, creating purchases, or enrolling the user in recurring tasks.
-
-## Security and cost boundaries
-
-The initial bearer service token is suitable only for a trusted developer deployment. Before exposing clients publicly, implement user authentication and derive the assistant namespace on the server. Store provider credentials as secrets, redact sensitive traces, and keep credentials out of model context.
-
-Each run needs maximum turns, bounded retrieved context, time limits, and an estimated/actual usage ledger. Each user needs a spending limit and concurrency policy. Stop or defer work when limits are reached, and show a useful task failure reason.
+- [Official Muse design](https://muse.ai/blog/how-we-designed-muse): agent
+  computer/browser, background goals, editable memory, structured permissions,
+  artifacts; product behavior rather than a full backend contract.
+- [CodePick guide](https://codepick.dev/en/guides/muse-architecture/): independent
+  analysis that explicitly distinguishes observations from unknown internals.
+- [Playwright persistent context](https://playwright.dev/docs/api/class-browsertype#browser-type-launch-persistent-context): dedicated user-data directory and lifecycle.
+- [OpenAI SDK approvals](https://openai.github.io/openai-agents-js/guides/human-in-the-loop/): interruption/resumption primitives.
+- [Google Gmail quickstart](https://developers.google.com/workspace/gmail/api/quickstart/nodejs): API project, scopes and user consent.
+- [Cloudflare browser sessions](https://developers.cloudflare.com/browser-run/features/reuse-sessions/): later hosted session management; reuse is not a permanent VM guarantee.
 
 ## Verification
 
-1. Type check and build the Worker without deploying it.
-2. Test meaningful state transitions, memory revisions, context bounds, and schedule validation.
-3. Run local persistence, authentication, chat, and schedule smoke tests.
-4. Test failed model calls, expired credentials, retries, cancellation, and concurrent memory updates.
-5. Deploy only with working account access; verify bindings and secret configuration.
-6. Use a small regression set to evaluate memory accuracy, inappropriate proactive actions, tool use, and cost before expanding autonomy.
+Before expansion, TypeScript, frontend build and 19 component tests passed.
+Live model/browser/background operation was not verified. Record current
+evidence and blockers in `docs/VERIFICATION.md`; clearly label test doubles.
+Missing credentials, dependencies, network and process permissions are blockers,
+not successful live tests. Deployment remains deferred until local validation.
 
-## Repository and deployment status
+## Additional target capabilities from Muse's self-description
 
-Nineteen native Node tests passed during initialization: domain rules, gateway checks, and real-SQLite application integration with platform/model adapters substituted. Tests use Node 22.18+ TypeScript support without test-runner dependencies. Package installation failed with `ENOTFOUND registry.npmjs.org`; type checking, UI build, Worker bundling, and workerd/live SDK checks have not run. There is no lockfile yet: initial setup and CI must use `npm install` until one can be generated and committed; then CI should use `npm ci`.
+Treat these as product requirements to evaluate, not independently verified
+facts about Muse's internal implementation.
 
-GitHub repository creation was attempted but could not reach api.github.com, including from fresh PowerShell processes. The CLI also reported an invalid credential; DNS failure prevents confirming whether refreshed authentication is usable. Local Git initialization and the intended origin URL exist, but staging/committing failed because .git/index.lock and config writes were denied. The remote has not been created and the source has not been committed. Once writable Git metadata and network access are available, commit, create the private remote, and push. Cloudflare deployment likewise requires account access and configured secrets.
+| Requirement | Current implementation or next work |
+| --- | --- |
+| Claim lineage | Implemented version chain, source IDs, provenance and confidence; source claims still need human/provider verification |
+| Human-readable layers | Managed curated/daily/person files; not a complete relationship graph |
+| Semantic retrieval | GPT-6 Luna ranking over bounded saved memories; all-transcript semantic indexing remains open |
+| Alignment dreams | Read-only synthesis proposals and reviewed revision-safe application; no automatic rewritten system prompt |
+| Proactive delivery | Explicit every-run reminders vs changes-only research gate, source-observation freshness, recorded skip decisions; full claim re-verification and push remain open |
+| Deferred namespaces | A bounded operation dispatcher exists; true on-demand SDK schema loading remains open |
+| Side chats and messaging | Not implemented; require separate thread state and provider-specific messaging authorization |
+| Rich documents/media | Text/web artifacts exist; PDF/Office generators and media providers remain open |
+| Commerce and phones | Not implemented; provider/payment/device setup and stronger per-action review would be required |
+
+The user has now passed live browser navigation/snapshot/screenshot, GPT-6 Luna
+connectivity, memory-search chat, scheduled execution/inbox delivery, restart
+persistence and browser approval/rejection/digest/replay smoke tests. See
+`docs/VERIFICATION.md` for the evidence and scope. Remaining local gates include
+visible/manual browser control, retained dedicated logins, memory/dream UI
+review, real Google OAuth consent and optional Docker execution. These remain
+open before hosted deployment; no OAuth or account-write success is claimed.

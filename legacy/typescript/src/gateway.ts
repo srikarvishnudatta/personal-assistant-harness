@@ -40,7 +40,7 @@ export async function handleRequest(request: Request, env: Env): Promise<Respons
   const internalUrl = new URL(request.url);
   internalUrl.pathname = route;
   const forwardedHeaders = new Headers({ "X-User-Id": "personal", "Content-Type": "application/json" });
-  const forwarded = new Request(internalUrl, { method: request.method, headers: forwardedHeaders, body });
+  const forwarded = new Request(internalUrl, { method: request.method, headers: forwardedHeaders, body: body ? body.buffer as ArrayBuffer : undefined });
   try {
     const result = await env.ASSISTANTS.getByName("personal").fetch(forwarded);
     const response = new Response(result.body, result);

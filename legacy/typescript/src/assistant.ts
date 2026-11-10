@@ -62,7 +62,7 @@ export class Assistant extends DurableObject<Env> {
     if (Number.isFinite(wake)) await this.ctx.storage.setAlarm(Math.max(Date.now() + 1000, wake));
     else await this.ctx.storage.deleteAlarm();
   }
-  private async startTask(prompt: string, kind: 'task' | 'dream', id = crypto.randomUUID()) {
+  private async startTask(prompt: string, kind: 'task' | 'dream', id: string = crypto.randomUUID()) {
     const userId = String(this.rows("SELECT value FROM meta WHERE key='userId'")[0]?.value || '');
     if (!userId) throw new Error('User identity missing');
     // An early wake-up protects the insert -> workflow-create crash window.

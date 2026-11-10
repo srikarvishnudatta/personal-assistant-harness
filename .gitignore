@@ -9,3 +9,13 @@ dist/
 *.zip
 coverage/
 .local-tools/
+.assistant/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+# Temporary component-test databases and debug output
+/.tmp-debug*/
+/python-runtime-*/
+/tmp*/
+/backend/tests/tmp*/

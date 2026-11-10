@@ -5,30 +5,34 @@
   "type": "module",
   "engines": { "node": ">=22.18.0" },
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "node scripts/python.mjs server",
+    "dev:local": "node scripts/python.mjs server",
+    "dev:cloudflare": "node scripts/cloudflare-deferred.mjs",
     "dev:ui": "vite --host 127.0.0.1",
     "build": "vite build",
-    "check": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "deploy": "npm run build && wrangler deploy"
+    "check": "tsc --noEmit && node scripts/python.mjs check",
+    "test": "node scripts/python.mjs test",
+    "test:browser": "node scripts/python.mjs browser",
+    "test:model": "node scripts/python.mjs model",
+    "test:local": "node --experimental-strip-types scripts/local-smoke.ts",
+    "test:approvals": "node --experimental-strip-types scripts/approval-smoke.ts",
+    "test:workflows": "node --experimental-strip-types scripts/workflow-smoke.ts",
+    "doctor:network": "node scripts/python.mjs network",
+    "deploy": "node scripts/cloudflare-deferred.mjs"
   },
   "dependencies": {
-    "@astryxdesign/core": "*",
+    "@astryxdesign/core": "0.7.11",
     "@astryxdesign/theme-neutral": "*",
-    "@openai/agents": "^0.3.0",
-    "@stylexjs/stylex": "^0.15.0",
+    "@stylexjs/stylex": "^0.19.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "zod": "^4.0.0"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20251101.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.4.0",
     "typescript": "^5.8.0",
-    "vite": "^6.3.0",
-    "wrangler": "^4.45.0"
+    "vite": "^6.3.0"
   }
 }
