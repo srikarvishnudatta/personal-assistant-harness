@@ -6,9 +6,9 @@ from urllib.parse import parse_qs, urlsplit
 from unittest.mock import AsyncMock
 
 import httpx
-from harness.config import Config
-from harness.providers import ProviderRegistry, CredentialVault
-from backend.tests.offline_loop import OfflineAsyncCase
+from harness.core.config import Config
+from harness.integrations.providers import ProviderRegistry, CredentialVault
+from tests.offline_loop import OfflineAsyncCase
 
 
 TOKEN='synthetic-authorized-token-123456'

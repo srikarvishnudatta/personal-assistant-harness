@@ -92,16 +92,16 @@ local credentials; revoke the remote grant separately when desired.
 No new dependencies are required. Stop the previous server, then run:
 
 ```powershell
-npm run check
-npm test
-npm run build
-npm run dev
+npm --prefix frontend run check
+uv run --directory backend python -m unittest discover -s tests -t . -v
+npm --prefix frontend run build
+uv run --directory backend harness-server
 ```
 
 In another terminal, with chat/background work idle:
 
 ```powershell
-npm run test:knowledge
+uv run --directory backend python -m harness.cli.smoke_knowledge
 ```
 
 The synthetic smoke test makes three short model runs: chat, query expansion and

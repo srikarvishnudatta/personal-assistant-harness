@@ -7,10 +7,10 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock
 from unittest.mock import patch
 
-from backend.tests.offline_loop import OfflineAsyncCase
-from harness.config import Config
-from harness.runtime import Runtime
-from harness.store import LocalStore
+from tests.offline_loop import OfflineAsyncCase
+from harness.core.config import Config
+from harness.application.runtime import Runtime
+from harness.persistence.store import LocalStore
 
 
 class RuntimeTests(OfflineAsyncCase):
@@ -158,12 +158,13 @@ class RuntimeTests(OfflineAsyncCase):
         self.assertEqual(status, 409)
 
     async def test_model_refuses_other_models(self):
-        from harness.agent import run_assistant
+        from harness.agents.runner import run_assistant
         self.config.model = 'other-model'
         with self.assertRaisesRegex(ValueError, 'gpt-6-luna'): await run_assistant(self.config, 'x', 'x')
 
     async def test_python_sdk_adapter_settles_usage_and_citations(self):
-        from harness.agent import AgentCapabilities, run_assistant
+        from harness.agents.capabilities import AgentCapabilities
+        from harness.agents.runner import run_assistant
         from agents.items import ModelResponse
         from agents.usage import Usage
         usage = []; evidence = []
@@ -205,7 +206,7 @@ class RuntimeTests(OfflineAsyncCase):
 
     async def test_fastapi_real_runtime_handover_and_empty_delete(self):
         import httpx
-        from harness.server import create_app
+        from harness.api.server import create_app
         await self.runtime.close()
         def factory(config, store):
             self.runtime = Runtime(config, store=store, browser=self.browser, google=self.google, runner=self.runner)
@@ -275,7 +276,7 @@ store.close(); process.stdout.write(JSON.stringify({workflowId:workflow.id,memor
     async def test_people_api_context_repairs_and_read_only_boundaries(self):
         status,person=await self.request('/people',dict(name='Taylor',context='Synthetic colleague'))
         self.assertEqual(status,201)
-        from harness.memory import build_context
+        from harness.knowledge.memory import build_context
         self.assertIn('Synthetic colleague',build_context(self.runtime.store,'Ask Taylor'))
         self.assertEqual((await self.runtime.operate('people_search',dict(query='Taylor'),read_only=True))['people'][0]['id'],person['id'])
         with self.assertRaisesRegex(ValueError,'read-only'):

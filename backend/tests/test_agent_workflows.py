@@ -1,9 +1,10 @@
 import unittest
 from datetime import datetime, timezone
 
-from harness.agent import AgentCapabilities, _build_tools
-from harness.scheduling import next_cron_time, next_interval_time, validate_cron
-from harness.workflows import research_workflow, validate_workflow, workflow_task_id
+from harness.agents.capabilities import AgentCapabilities
+from harness.agents.tools import _build_tools
+from harness.scheduling.cron import next_cron_time, next_interval_time, validate_cron
+from harness.agents.workflows import research_workflow, validate_workflow, workflow_task_id
 
 
 class WorkflowTests(unittest.TestCase):

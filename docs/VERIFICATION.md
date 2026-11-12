@@ -1,5 +1,28 @@
 # Verification ledger
 
+## Repository restructuring — November 11, 2026
+
+The active frontend is now a standalone `frontend/` npm project with feature
+screens, shared components/hooks, an API client and HTTP acceptance clients.
+The Python service is installed from `backend/src/harness/` using the uv
+workspace and committed lockfile. Root npm manifests, root node_modules,
+requirements files and the Node-to-Python launcher were removed.
+
+TypeScript checks (including acceptance clients), frontend build and the 88
+existing backend tests passed after source moves and HTTP dispatch extraction.
+The final full suite passed all 91 tests, including three new configuration
+tests for cwd-independent state paths,
+explicit roots, API-only mode settings and the default frontend directory.
+The backend source distribution and wheel also built successfully.
+A Chromium check rendered all 16 screens without JavaScript errors and sent a
+synthetic chat through the Vite proxy to the refactored API. The API also served
+the built UI directly. These checks used temporary SQLite data and an injected
+model runner, not live provider writes or model calls. Existing local state and
+credentials were not used by the preview.
+
+Historical commands below refer to older layouts. Use the root and package
+READMEs for current uv/npm setup and verification commands.
+
 ## Knowledge and provider expansion — November 10, 2026
 
 The user passed `npm run test:knowledge` against the running Python service in

@@ -5,7 +5,7 @@ import unittest
 import time
 from pathlib import Path
 
-from harness.store import LocalStore, canonical_json
+from harness.persistence.store import LocalStore, canonical_json
 
 
 class StoreTests(unittest.TestCase):

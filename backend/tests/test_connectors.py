@@ -10,8 +10,8 @@ from pathlib import Path
 import httpx
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
-from backend.harness.connectors import GoogleConnector, SCOPES
-from backend.tests.offline_loop import OfflineAsyncCase
+from harness.integrations.google import GoogleConnector, SCOPES
+from tests.offline_loop import OfflineAsyncCase
 
 
 SECRET = "test-encryption-secret-long-enough"

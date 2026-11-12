@@ -3,7 +3,7 @@
 Open [the interactive project guide](docs/project-guide.html) in a browser for
 the architecture explorer, capability filters, workflow simulator, setup commands
 and full embedded documentation. It works offline and makes no API calls.
-Regenerate it after documentation changes with `python scripts/build-project-guide.py`.
+Regenerate it after documentation changes with `uv run --directory backend python ../scripts/build-project-guide.py`.
 
 The [knowledge and providers expansion](docs/KNOWLEDGE-AND-PROVIDERS.md) adds
 History, People, Repairs and Evidence screens plus configurable Slack, Mastodon,
@@ -12,12 +12,41 @@ provider separately; sends/posts require the existing approval flow.
 
 A local-first personal assistant using **OpenAI Agents SDK for Python + GPT-6 Luna only**,
 an **Astryx React UI**, persistent SQLite and a dedicated Chromium profile.
-All active agent code is Python under `backend/harness`: the runner, tools,
+All active agent code is Python under `backend/src/harness`: the runner, tools,
 workflow coordination, memory, dreams, scheduling, approvals, browser and
 connectors. FastAPI serves the API and built React UI. Node is used for frontend
 builds and thin command/test clients. The retired backend is in
 `legacy/typescript` for reference; it is not part of the running app.
 No VM is provisioned. Cloudflare deployment is deferred.
+
+## Project layout and development
+
+The frontend is a standalone npm project in `frontend/`. Python is a uv workspace:
+`backend/pyproject.toml` owns dependencies, the root `uv.lock` locks them, and uv
+installs the `harness` package from `backend/src/`. There are no root npm manifests
+or requirements files. See [frontend development](frontend/README.md) and
+[backend development](backend/README.md) for the directory maps.
+
+From the repository root, run the API and frontend in two terminals:
+
+```bash
+uv run --directory backend harness-server
+npm --prefix frontend run dev
+```
+
+Open the URL printed by Vite (normally `http://127.0.0.1:5173`). Vite proxies
+`/api`, `/oauth` and `/health` to the backend. If the API uses another port:
+
+```bash
+HARNESS_API_ORIGIN=http://127.0.0.1:8788 npm --prefix frontend run dev
+```
+
+Backend credentials stay in the root `.dev.vars`; Vite never loads that file.
+Enter the access token in the UI. Set `SERVE_FRONTEND=false` for an API-only
+backend. For a single-server setup, build the frontend and start the API, then
+open `http://127.0.0.1:8787`. Its optional static adapter serves `frontend/dist`;
+`FRONTEND_DIST_DIR` can override that directory. Restart after configuration
+changes or upgrading from the old build layout.
 
 ## Workflow agents
 
@@ -45,7 +74,7 @@ Dependencies must be acyclic, refer to existing nodes, and all contribute to the
 output. Inspect with `GET /api/workflows/:id`; use POST to `/:id/cancel` or
 `/:id/retry`. Default teams use `{prompt,specialists?:[{role,prompt}]}` instead.
 
-After restarting the updated server, run `npm run test:workflows` in another
+After restarting the updated server, run `npm --prefix frontend run test:workflows` in another
 terminal. It makes four short real GPT-6 Luna calls using synthetic assignments
 and checks stage results, attempts and one final receipt. Records remain for
 inspection. Component tests use an injected runner; they do not prove live model
@@ -57,44 +86,40 @@ live provider tests and production readiness are separate states. See
 
 ## Run locally
 
-Use Python 3.12+ and Node 22.18+ (Node 24+ recommended). Stop the old server
-with Ctrl+C before starting Python against the same state directory. From this
-project directory, in a normal PowerShell terminal:
+Install uv, Python 3.12+ and Node 22.18+ (Node 24+ recommended). Run these commands
+from the repository root on macOS/Linux or PowerShell:
 
-```powershell
-npm install
-python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-if (!(Test-Path .dev.vars)) { Copy-Item .dev.vars.example .dev.vars }
+```bash
+uv sync --all-packages --locked
+npm --prefix frontend ci
+uv run --directory backend playwright install chromium
 ```
 
-Set `OPENAI_API_KEY` and a random `HARNESS_TOKEN` of at least 24 characters in
-`.dev.vars`. Keep the existing token if you have encrypted Google credentials:
-unless `CREDENTIAL_KEY` is explicitly configured, it also protects the vault.
-The file, `.assistant/`, `.venv/`, Python bytecode and `node_modules/` are ignored
-by Git. Existing SQLite records and the encrypted Google vault format are
-preserved; the dedicated Chromium profile uses the same ownership marker.
+Copy `.dev.vars.example` to `.dev.vars` if it does not already exist (`cp -n` on
+macOS/Linux; `Copy-Item` in PowerShell). Set `OPENAI_API_KEY` and a random
+`HARNESS_TOKEN` of at least 24 characters. Keep the existing token if you have
+encrypted Google credentials: unless `CREDENTIAL_KEY` is configured, the token
+also protects the vault. For bundled Chromium, set `BROWSER_CHANNEL=chromium`.
 
-```powershell
-npm run check
-npm test
-npm run build
-npm run dev
+```bash
+npm --prefix frontend run check
+uv run --directory backend python -m unittest discover -s tests -t . -v
+npm --prefix frontend run build
+uv run --directory backend harness-server
 ```
 
 Open `http://127.0.0.1:8787` and enter the access token. It stays in the tab's
-session storage, not the bundle. Stop any previous server on that port first,
-or set `LOCAL_PORT=8788` in `.dev.vars`.
+session storage. Stop any previous server on that port first, or set
+`LOCAL_PORT=8788` in `.dev.vars`. uv manages the root `.venv`; manual activation
+and `PYTHONPATH` configuration are unnecessary. `HARNESS_ROOT` can override the
+checkout root used for configuration and data.
 
-The runtime is loopback-only and intended for one trusted user. The server must
-stay running for schedules and queued work. It does not keep working while the
-computer sleeps. Public multiuser login and hosted push delivery are not built.
-
-For UI development, `npm run dev:ui` proxies `/api` to port 8787.
-`npm run dev` selects `.venv` automatically, or `PYTHON_EXECUTABLE` if set.
-You can also run Python directly with `PYTHONPATH=backend` and
-`python -m harness.server`. Cloudflare start/deploy commands report that hosted
-Python service integration is deferred; they cannot deploy the retired backend.
+The runtime is loopback-only and intended for one trusted user. It works only
+while the local server runs; it does not keep working while the computer sleeps.
+Public multiuser login and hosted push delivery are not built. Cloudflare hosting
+is deferred. Secrets, `.assistant/`, `.venv/`, bytecode, build output and
+`node_modules/` are ignored by Git. Existing SQLite records, the encrypted Google
+vault and the assistant browser profile are preserved.
 
 ## What is implemented
 
@@ -125,36 +150,36 @@ that managed copies could not all be refreshed.
 ## Dedicated browser
 
 If Chromium launches but public navigation fails with `ENOTFOUND`, run
-`npm run doctor:network` in the same terminal as the app. It checks Python's
+`uv run --directory backend python -m harness.cli.network_doctor` in the same terminal as the app. It checks Python's
 OS DNS lookup and shows only proxy-setting names, never values.
 It does not change DNS/proxy settings
 or bypass private-address checks. A browser launch does not prove DNS or page
 navigation works.
 
 The smoke test accepts a public target, for example
-`npm run test:browser -- https://playwright.dev`. It checks the HTTP response,
+`uv run --directory backend python -m harness.cli.smoke_browser https://playwright.dev`. It checks the HTTP response,
 readable page snapshot and screenshot. The same public-address validation still
 applies; a custom target is not a DNS fallback for a blocked destination.
 
-Check the model connection separately with `npm run test:model`. It makes one
+Check the model connection separately with `uv run --directory backend python -m harness.cli.smoke_model`. It makes one
 short GPT-6 Luna call with no tools or personal context and reports token usage
 without printing credentials. Browser and model connectivity are separate gates.
 
-With `npm run dev` running in another terminal and no other active tasks, run
-`npm run test:local` for a live chat/memory/schedule/inbox check. It makes two
+With `uv run --directory backend harness-server` running in another terminal and no other active tasks, run
+`npm --prefix frontend run test:local` for a live chat/memory/schedule/inbox check. It makes two
 short model runs and retains synthetic fixtures for a persistence test. Restart
-the server, then run `npm run test:local -- --verify-restart` to verify durable
+the server, then run `npm --prefix frontend run test:local -- --verify-restart` to verify durable
 state and clean up the temporary memory and schedule. Synthetic audit records
 are retained; this test does not send email, write calendar events or buy anything.
 If a first phase fails after creating fixtures, wait until the queue is idle and
-use `npm run test:local -- --cleanup` to remove only its validated test fixtures.
+use `npm --prefix frontend run test:local -- --cleanup` to remove only its validated test fixtures.
 
 Python Playwright drives a separate `.assistant/browser-profile`. On Windows it
 defaults to installed Microsoft Edge. Set `BROWSER_CHANNEL` or
 `BROWSER_EXECUTABLE_PATH` only for a browser installation you control; never
 point the profile at your everyday Chrome/Edge data.
 If using Playwright's bundled Chromium instead of installed Edge, install it
-with `.\.venv\Scripts\python.exe -m playwright install chromium` and configure
+with `uv run --directory backend playwright install chromium` and configure
 `BROWSER_CHANNEL=chromium`.
 
 Use Browser -> Start for headless automation, or Open manual window to log in.

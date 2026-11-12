@@ -26,9 +26,10 @@ docs = {name: (ROOT / file).read_text(encoding='utf-8') for name, file in {
     'Roadmap': 'docs/PLAN.md', 'Verification': 'docs/VERIFICATION.md',
     'Knowledge & providers': 'docs/KNOWLEDGE-AND-PROVIDERS.md',
 }.items()}
-runtime = (ROOT / 'backend/harness/runtime.py').read_text(encoding='utf-8')
+runtime = (ROOT / 'backend/src/harness/api/routes.py').read_text(encoding='utf-8')
 routes = sorted(set(re.findall(r"route == '([^']+)'", runtime)))
-payload = {'docs': docs, 'modules': modules, 'routes': routes}
+module_paths = {'config': 'backend/src/harness/core/config.py', 'server': 'backend/src/harness/api/server.py', 'frontend': 'backend/src/harness/api/frontend.py', 'runtime': 'backend/src/harness/application/runtime.py', 'agent': 'backend/src/harness/agents/runner.py', 'workflows': 'backend/src/harness/agents/workflows.py', 'store': 'backend/src/harness/persistence/store.py', 'knowledge': 'backend/src/harness/knowledge/index.py', 'memory': 'backend/src/harness/knowledge/memory.py', 'freshness': 'backend/src/harness/knowledge/freshness.py', 'proactivity': 'backend/src/harness/scheduling/proactivity.py', 'scheduling': 'backend/src/harness/scheduling/cron.py', 'browser': 'backend/src/harness/integrations/browser.py', 'connectors': 'backend/src/harness/integrations/google.py', 'providers': 'backend/src/harness/integrations/providers.py', 'workspace': 'backend/src/harness/workspace/files.py', 'smoke_model': 'backend/src/harness/cli/smoke_model.py', 'smoke_browser': 'backend/src/harness/cli/smoke_browser.py', 'smoke_knowledge': 'backend/src/harness/cli/smoke_knowledge.py', 'network_doctor': 'backend/src/harness/cli/network_doctor.py'}
+payload = {'docs': docs, 'modules': modules, 'routes': routes, 'modulePaths': module_paths}
 template = (ROOT / 'docs/project-guide.template.html').read_text(encoding='utf-8')
 output = template.replace('__PROJECT_DATA__', json.dumps(payload, ensure_ascii=True).replace('<', '\\u003c'))
 (ROOT / 'docs/project-guide.html').write_text(output, encoding='utf-8')

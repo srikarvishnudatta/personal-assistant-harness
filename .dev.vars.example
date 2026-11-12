@@ -4,6 +4,9 @@ OPENAI_MODEL=gpt-6-luna
 
 # Local runtime (never deploy this file)
 LOCAL_PORT=8787
+# Optional static UI adapter; disable when using the Vite development server.
+SERVE_FRONTEND=true
+FRONTEND_DIST_DIR=frontend/dist
 DAILY_TOKEN_LIMIT=200000
 RUN_TOKEN_RESERVATION=100000
 # Set these only after creating a Google OAuth web client.

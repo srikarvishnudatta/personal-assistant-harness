@@ -6,9 +6,9 @@ from pathlib import Path
 import httpx
 from fastapi.responses import JSONResponse
 
-from backend.tests.offline_loop import OfflineAsyncCase
-from harness.config import Config
-from harness.server import MAX_REQUEST_BYTES, RequestGuards, create_app
+from tests.offline_loop import OfflineAsyncCase
+from harness.core.config import Config
+from harness.api.server import MAX_REQUEST_BYTES, RequestGuards, create_app
 
 
 class FakeRuntime:
@@ -38,8 +38,8 @@ class ServerTests(OfflineAsyncCase):
         self.root = Path(self.tmp.name)
         self.config = Config(root=self.root, data_dir=self.root / ".assistant", port=8787,
                              token="x" * 32)
-        self.dist = self.root / "dist"
-        self.dist.mkdir()
+        self.dist = self.root / "frontend" / "dist"
+        self.dist.mkdir(parents=True)
         (self.dist / "index.html").write_text("<h1>Local assistant</h1>", encoding="utf-8")
         (self.dist / "app.js").write_text("console.log('ok')", encoding="utf-8")
         FakeRuntime.instances.clear()
@@ -53,8 +53,16 @@ class ServerTests(OfflineAsyncCase):
         await self.client.aclose()
         if self.lifespan is not None:
             await self.lifespan.__aexit__(None, None, None)
-        from harness.workspace import _retry_sharing_violation
+        from harness.workspace.files import _retry_sharing_violation
         _retry_sharing_violation(self.tmp.cleanup)
+
+    async def test_api_only_mode_does_not_serve_frontend(self):
+        self.config.serve_frontend = False
+        app = create_app(self.config, FakeRuntime)
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app),
+                                     base_url="http://127.0.0.1:8787") as client:
+            self.assertEqual((await client.get("/")).status_code, 404)
+            self.assertEqual((await client.get("/health")).status_code, 200)
 
     async def test_auth_public_paths_and_lifecycle(self):
         self.assertEqual((await self.client.get("/health")).status_code, 200)

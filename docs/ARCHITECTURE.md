@@ -2,7 +2,7 @@
 
 The active backend is Python/FastAPI. Agent execution, tools, workflows,
 memory, dreams, scheduling and approvals are Python modules; React/Astryx is
-the UI. `scripts/python.mjs` only selects and launches the interpreter. Retired
+the UI. uv installs and launches the packaged Python service. Retired
 TypeScript code is archived outside the build in `legacy/typescript`.
 Cloudflare integration is deferred; the earlier Worker is not deployed by
 the current commands.
@@ -24,24 +24,45 @@ flowchart TD
   EXEC --> DB
 ```
 
+## Package boundaries
+
+`frontend/` owns its npm manifest, lockfile, dependencies, tests and `dist/` output.
+There is no root npm project. UI screens live in `src/features/`, shared controls
+in `src/components/`, data hooks in `src/hooks/`, and HTTP transport in
+`src/api/client.ts`. The app shell and navigation live in `src/app/`.
+
+The root uv workspace installs the package defined by `backend/pyproject.toml`
+from `backend/src/harness/`; `uv.lock` locks Python dependencies. HTTP guards,
+routes and the optional static adapter live in `api/`; `application/runtime.py`
+coordinates agent work without owning HTTP response construction. `agents/`
+separates capability contracts, tool schemas, the SDK runner and workflows.
+`persistence/`, `knowledge/`, `scheduling/`, `integrations/`, `workspace/`, `core/`
+and `cli/` contain their respective services. All imports use the installed
+`harness` package; neither Node nor `PYTHONPATH` is required to run the API.
+
+Vite proxies API/OAuth requests during development. `SERVE_FRONTEND=false` runs
+the API alone. The optional static adapter uses a configurable build directory.
+Backend secrets are never loaded by Vite. Configuration and data resolve from
+the checkout root, independent of the launch directory, or from `HARNESS_ROOT`.
+
 ## Ownership
 
 | Concern | Owner |
 | --- | --- |
-| UI, theme and review forms | `web/src/` |
-| HTTP limits, static assets, loopback binding and Host checks | `backend/harness/server.py` |
-| Authentication, queue, tool dispatch, resumption and delivery decisions | `backend/harness/runtime.py` |
-| Durable transactions, revisions, action digest and recovery | `backend/harness/store.py` |
-| Model/tool feedback loop | `backend/harness/agent.py` using OpenAI Agents SDK |
-| Dedicated Chromium lifecycle and public-network policy | `backend/harness/browser.py` |
-| Google OAuth and encrypted credential vault | `backend/harness/connectors.py` |
-| Confined artifacts and optional Docker execution | `backend/harness/workspace.py` |
-| Human-readable memory projections | `backend/harness/memory.py` |
-| Timezone cron and missed-tick coalescing | `backend/harness/scheduling.py` |
-| Full-history search, people graph and repair records | `backend/harness/knowledge.py` |
-| Per-source freshness and bounded claim support review | `backend/harness/freshness.py` |
-| Additional provider grants and bounded operations | `backend/harness/providers.py` |
-| Duplicate/source-observation delivery gate | `backend/harness/proactivity.py` |
+| UI, theme and review forms | `frontend/src/` |
+| HTTP limits, static assets, loopback binding and Host checks | `backend/src/harness/api/server.py` |
+| Authentication, queue, tool dispatch, resumption and delivery decisions | `backend/src/harness/application/runtime.py` |
+| Durable transactions, revisions, action digest and recovery | `backend/src/harness/persistence/store.py` |
+| Model/tool feedback loop | `backend/src/harness/agents/runner.py` using OpenAI Agents SDK |
+| Dedicated Chromium lifecycle and public-network policy | `backend/src/harness/integrations/browser.py` |
+| Google OAuth and encrypted credential vault | `backend/src/harness/integrations/google.py` |
+| Confined artifacts and optional Docker execution | `backend/src/harness/workspace/files.py` |
+| Human-readable memory projections | `backend/src/harness/knowledge/memory.py` |
+| Timezone cron and missed-tick coalescing | `backend/src/harness/scheduling/cron.py` |
+| Full-history search, people graph and repair records | `backend/src/harness/knowledge/index.py` |
+| Per-source freshness and bounded claim support review | `backend/src/harness/knowledge/freshness.py` |
+| Additional provider grants and bounded operations | `backend/src/harness/integrations/providers.py` |
+| Duplicate/source-observation delivery gate | `backend/src/harness/scheduling/proactivity.py` |
 
 ## Data boundaries
 

@@ -5,10 +5,10 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-from harness.store import LocalStore
-from harness.knowledge import HistoryIndex, PeopleGraph, RepairQueue
-from harness.freshness import FreshnessVerifier, check_observations
-from backend.tests.offline_loop import OfflineAsyncCase
+from harness.persistence.store import LocalStore
+from harness.knowledge.index import HistoryIndex, PeopleGraph, RepairQueue
+from harness.knowledge.freshness import FreshnessVerifier, check_observations
+from tests.offline_loop import OfflineAsyncCase
 
 
 class KnowledgeTests(unittest.TestCase):
@@ -30,7 +30,7 @@ class KnowledgeTests(unittest.TestCase):
     def test_index_backfills_legacy_messages(self):
         self.store.db.execute('DROP TRIGGER history_added')
         message=self.store.add_message('user','Legacy astronomy discussion')
-        from harness.knowledge import initialize_knowledge
+        from harness.knowledge.index import initialize_knowledge
         initialize_knowledge(self.store.db)
         self.assertEqual(self.index.search('astronomy')[0]['id'],message['id'])
     def test_search_handles_fts_operators_as_data(self):

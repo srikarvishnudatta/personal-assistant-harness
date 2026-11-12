@@ -7,12 +7,12 @@ import time
 from unittest.mock import patch
 from pathlib import Path
 
-from backend.harness.browser import (
+from harness.integrations.browser import (
     BrowserService, PROFILE_ID, PROFILE_MARKER, assert_public_browser_url,
     is_public_browser_address, validate_browser_url,
 )
-from backend.harness.workspace import MAX_BYTES, WorkspaceService
-from backend.tests.offline_loop import OfflineAsyncCase, RetryTemporaryDirectory
+from harness.workspace.files import MAX_BYTES, WorkspaceService
+from tests.offline_loop import OfflineAsyncCase, RetryTemporaryDirectory
 
 _TEST_TEMP_ROOT = Path(__file__).resolve().parent
 
@@ -88,7 +88,7 @@ class WorkspaceTests(OfflineAsyncCase):
         self.service = WorkspaceService(self.root)
 
     async def asyncTearDown(self):
-        from backend.harness.workspace import _retry_sharing_violation
+        from harness.workspace.files import _retry_sharing_violation
         _retry_sharing_violation(self.temp.cleanup)
 
     async def test_write_read_list_and_remove(self):
@@ -110,7 +110,7 @@ class WorkspaceTests(OfflineAsyncCase):
             if calls == 1:
                 raise locked
             return original_replace(source, target)
-        with patch("backend.harness.workspace.os.replace", side_effect=replace), patch("backend.harness.workspace.time.sleep", wraps=time.sleep):
+        with patch("harness.workspace.files.os.replace", side_effect=replace), patch("harness.workspace.files.time.sleep", wraps=time.sleep):
             await self.service.write("retry.txt", "saved")
         self.assertGreaterEqual(calls, 2)
         self.assertEqual((await self.service.read("retry.txt"))["content"], "saved")
