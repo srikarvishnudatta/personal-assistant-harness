@@ -1,5 +1,8 @@
 # Python agent service. Direct dependencies tested with Python 3.14.
 openai-agents==0.17.2
+# Pin the client: newer token schemas require cache_write_tokens, which this
+# Agents SDK version omits when constructing usage details.
+openai==2.26.0
 fastapi==0.136.1
 uvicorn==0.47.0
 httpx==0.28.1

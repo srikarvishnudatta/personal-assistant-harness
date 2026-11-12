@@ -65,6 +65,17 @@ class SchedulingTests(unittest.TestCase):
 
 
 class AgentAdapterTests(unittest.TestCase):
+    def test_sdk_usage_details_are_compatible(self):
+        from agents.usage import Usage
+
+        # Real SDK construction caught a client schema change that mocked
+        # model responses missed (required cache_write_tokens).
+        usage = Usage()
+        usage.add(Usage(requests=1, input_tokens=3, output_tokens=2, total_tokens=5))
+        self.assertEqual((usage.input_tokens, usage.output_tokens, usage.total_tokens), (3, 2, 5))
+        self.assertEqual(usage.input_tokens_details.cached_tokens, 0)
+        self.assertEqual(len(usage.request_usage_entries), 1)
+
     def test_agent_tools_build_real_sdk_schemas(self):
         from agents import WebSearchTool, function_tool
 
